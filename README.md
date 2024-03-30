@@ -1,6 +1,6 @@
-📻**OVERVIEW**
-
 ![image](https://github.com/Coderbug3407/LMIC-LoRaWAN-STM32-/assets/75492886/475957a0-1300-4074-bdaf-654c7c3fa657)
+
+📻**OVERVIEW**
 
 
 This project utilizes an STM32F303 board and a LoRa RF95W 915MHz module for data transmission. Leveraging the LMIC LoRaWAN Library, it connect to The Things Network Server, a pivotal element in LoRaWAN solutions.
