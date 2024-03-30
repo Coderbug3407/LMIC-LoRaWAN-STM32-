@@ -1,0 +1,5 @@
+../stm32/eeprom.c:38:6:eeprom_init	1
+../stm32/eeprom.c:49:6:eeprom_write	1
+../stm32/eeprom.c:90:6:eeprom_copy	1
+../stm32/eeprom.c:102:6:writeToEE	2
+../stm32/eeprom.c:125:6:readFromEE	1

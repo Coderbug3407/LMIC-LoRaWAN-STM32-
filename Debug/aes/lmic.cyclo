@@ -1,0 +1,9 @@
+../aes/lmic.c:224:9:table_get_u1	1
+../aes/lmic.c:225:8:table_get_s1	1
+../aes/lmic.c:226:10:table_get_u2	1
+../aes/lmic.c:227:9:table_get_s2	1
+../aes/lmic.c:228:10:table_get_u4	1
+../aes/lmic.c:229:9:table_get_s4	1
+../aes/lmic.c:230:10:table_get_ostime	1
+../aes/lmic.c:234:13:aesroundkeys	5
+../aes/lmic.c:256:10:os_aes	24

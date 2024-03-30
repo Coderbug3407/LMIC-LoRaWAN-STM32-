@@ -1,0 +1,183 @@
+/*
+ * Copyright (c) 2014-2016 IBM Corporation.
+ * All rights reserved.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions are met:
+ *  * Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *  * Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *  * Neither the name of the <organization> nor the
+ *    names of its contributors may be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+
+
+#include "../../lmic/oslmic.h"
+#include "stm32f3xx_hal.h"
+#include <stdio.h>
+#include <ctype.h>
+//////////////////////////////////////////////////////////////////////
+// GPIO
+//////////////////////////////////////////////////////////////////////
+
+// GPIO by port number (A=0, B=1, ..)
+#define GPIOx(no) ((GPIO_TypeDef*) (GPIOA_BASE + (no)*(GPIOB_BASE-GPIOA_BASE)))
+
+// GPIOCFG macros
+#define GPIOCFG_AF_MASK        0x000F
+#define GPIO_AF_I2C1        0x04
+
+#define GPIOCFG_MODE_SHIFT      4
+#define GPIOCFG_MODE_MASK      (3<<GPIOCFG_MODE_SHIFT)
+#define GPIOCFG_MODE_INP       (0<<GPIOCFG_MODE_SHIFT)
+#define GPIOCFG_MODE_OUT       (1<<GPIOCFG_MODE_SHIFT)
+#define GPIOCFG_MODE_ALT       (2<<GPIOCFG_MODE_SHIFT)
+#define GPIOCFG_MODE_ANA       (3<<GPIOCFG_MODE_SHIFT)
+#define GPIOCFG_OSPEED_SHIFT    6
+#define GPIOCFG_OSPEED_MASK    (3<<GPIOCFG_OSPEED_SHIFT)
+#define GPIOCFG_OSPEED_400kHz  (0<<GPIOCFG_OSPEED_SHIFT)
+#define GPIOCFG_OSPEED_2MHz    (1<<GPIOCFG_OSPEED_SHIFT)
+#define GPIOCFG_OSPEED_10MHz   (2<<GPIOCFG_OSPEED_SHIFT)
+#define GPIOCFG_OSPEED_40MHz   (3<<GPIOCFG_OSPEED_SHIFT)
+#define GPIOCFG_OTYPE_SHIFT     8
+#define GPIOCFG_OTYPE_MASK     (1<<GPIOCFG_OTYPE_SHIFT)
+#define GPIOCFG_OTYPE_PUPD     (0<<GPIOCFG_OTYPE_SHIFT)
+#define GPIOCFG_OTYPE_OPEN     (1<<GPIOCFG_OTYPE_SHIFT)
+#define GPIOCFG_PUPD_SHIFT      9
+#define GPIOCFG_PUPD_MASK      (3<<GPIOCFG_PUPD_SHIFT)
+#define GPIOCFG_PUPD_NONE      (0<<GPIOCFG_PUPD_SHIFT)
+#define GPIOCFG_PUPD_PUP       (1<<GPIOCFG_PUPD_SHIFT)
+#define GPIOCFG_PUPD_PDN       (2<<GPIOCFG_PUPD_SHIFT)
+#define GPIOCFG_PUPD_RFU       (3<<GPIOCFG_PUPD_SHIFT)
+
+// IRQ triggers (same values as in Moterunner!)
+#define GPIO_IRQ_MASK          0x38
+#define GPIO_IRQ_FALLING       0x20
+#define GPIO_IRQ_RISING        0x28
+#define GPIO_IRQ_CHANGE        0x30
+
+// configure operation mode of GPIO pin
+void hw_cfg_pin (GPIO_TypeDef* gpioport, uint8_t pin, uint16_t gpiocfg);
+
+// set state of GPIO output pin
+void hw_set_pin (GPIO_TypeDef* gpioport, uint8_t pin, uint8_t state);
+
+// configure given line as external interrupt source (EXTI handler)
+void hw_cfg_extirq (uint8_t portidx, uint8_t pin, uint8_t irqcfg);
+
+
+//////////////////////////////////////////////////////////////////////
+// EEPROM
+//////////////////////////////////////////////////////////////////////
+
+// Unique device ID registers (96 bits)
+#define UNIQUE_ID_BASE 0x1FF80050
+#define UNIQUE_ID0 (UNIQUE_ID_BASE+0x00)
+#define UNIQUE_ID1 (UNIQUE_ID_BASE+0x04)
+#define UNIQUE_ID2 (UNIQUE_ID_BASE+0x14)
+
+
+
+#define ADDR_FLASH_PAGE_124   ((uint32_t)0x0801F000) /* Base @ of Page 124, 1 Kbytes */
+#define ADDR_FLASH_PAGE_125   ((uint32_t)0x0801F400) /* Base @ of Page 125, 1 Kbytes */
+#define ADDR_FLASH_PAGE_126   ((uint32_t)0x0801F800) /* Base @ of Page 126, 1 Kbytes */
+#define ADDR_FLASH_PAGE_127   ((uint32_t)0x0801FC00) /* Base @ of Page 127, 1 Kbytes */
+
+#define FLASH_USER_START_ADDR   ADDR_FLASH_PAGE_124   /* Start @ of user Flash area */
+#define FLASH_USER_END_ADDR     ADDR_FLASH_PAGE_127 + FLASH_PAGE_SIZE   /* End @ of user Flash area */
+
+// EEPROM 0x08080000-0x08080FFF 4096 bytes
+//#define EEPROM_BASE 0x801EFFE
+//#define EEPROM_BASE 0x08008000
+#define EEPROM_BASE ADDR_FLASH_PAGE_124
+//#define EEPROM_BASE 0x0801EFF8
+
+void eeprom_init(void);
+// write 32-bit word to EEPROM
+void eeprom_write (uint32_t* addr, uint32_t val);
+
+// copy bytes to EEPROM (aligned, multiple of 4)
+void eeprom_copy (void* dst, const void* src, uint16_t len);
+
+void writeToEE(void *data,size_t size);
+
+void readFromEE(void* data, uint8_t size);
+
+//////////////////////////////////////////////////////////////////////
+// ADC
+//////////////////////////////////////////////////////////////////////
+
+uint16_t adc_read (uint8_t chnl);
+
+
+//////////////////////////////////////////////////////////////////////
+// CRC engine (32bit aligned words only!)
+//////////////////////////////////////////////////////////////////////
+
+void crc32_init (void);
+unsigned int crc32 (void* ptr, int nwords);
+void crc32_shutdown (void);
+
+
+//////////////////////////////////////////////////////////////////////
+// I2C
+//////////////////////////////////////////////////////////////////////
+
+// initialize i2c-bus
+uint8_t i2c_init (void);
+
+// transfer data to and from i2c-device
+int8_t i2c_xfer (uint8_t addr, uint8_t* data, uint8_t wlen, uint8_t rlen);
+
+
+//////////////////////////////////////////////////////////////////////
+// SPI
+//////////////////////////////////////////////////////////////////////
+
+#define SPI_MODE_CPHA  0x01
+#define SPI_MODE_CPOL  0x02
+
+// initialize SPI (modes 0-3, bit0=clock phase, bit1=clock polarity)
+void spi_init (uint8_t mode);
+
+// transfer byte to and from SPI (no chip-select)
+uint8_t spi_xfer (uint8_t out);
+
+
+
+
+
+
+//////////////////////////////////////////////////////////////////////
+// FLASH
+//////////////////////////////////////////////////////////////////////
+#ifdef CFG_flash
+
+typedef uint16_t const * pref2uint16_t;
+typedef uint8_t const * pref2uint8_t;
+typedef pref2uint8_t pref_t;
+
+
+pref2uint8_t hw_flash_init();
+void hal_erase_p (pref2uint8_t ppdst, uint16_t len, uint8_t itemsize);
+void hal_copy_x2p (pref2uint8_t ppdst, uint16_t len, uint8_t *xpsrc);
+void hal_wrp_u1 (pref2uint8_t ppdst, uint8_t value);
+void hal_wrp_u2 (pref2uint16_t ppdst, uint16_t value);
+
+
+#endif /* CFG_flash */

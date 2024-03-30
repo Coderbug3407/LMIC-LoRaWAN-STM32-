@@ -1,0 +1,8 @@
+../lmic/oslmic.c:37:6:os_init	1
+../lmic/oslmic.c:44:10:os_getTime	1
+../lmic/oslmic.c:49:12:unlinkjob	3
+../lmic/oslmic.c:60:6:os_clearCallback	4
+../lmic/oslmic.c:73:6:os_setCallback	2
+../lmic/oslmic.c:91:6:os_setTimedCallback	3
+../lmic/oslmic.c:116:6:os_runloop	1
+../lmic/oslmic.c:122:6:os_runloop_once	5

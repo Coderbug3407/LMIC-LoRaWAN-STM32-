@@ -1,0 +1,13 @@
+D:\STM32CubeIDE_1.13.2\STM32CubeIDE\plugins\com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.11.3.rel1.win32_1.1.1.202309131626\tools\bin/../lib/gcc/arm-none-eabi/11.3.1/../../../../arm-none-eabi/include/stdio.h:210:5:printf	112	static
+../stm32/debug.c:49:6:debug_init	8	static
+../stm32/debug.c:66:6:debug_led	16	static
+../stm32/debug.c:70:6:debug_char	16	static
+../stm32/debug.c:74:6:debug_hex	16	static
+../stm32/debug.c:79:6:debug_buf	16	static
+../stm32/debug.c:88:6:debug_uint	24	static
+../stm32/debug.c:94:6:debug_int	48	static
+../stm32/debug.c:101:6:debug_str	16	static
+../stm32/debug.c:106:6:debug_val	16	static
+../stm32/debug.c:113:6:debug_valdec	16	static
+../stm32/debug.c:120:5:debug_fmt	80	static
+../stm32/debug.c:144:6:debug_event	16	static
