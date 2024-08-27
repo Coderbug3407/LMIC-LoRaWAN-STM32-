@@ -20,3 +20,5 @@ In the document, I write detailed about peripherals, hardware description, STM32
 🔍**FURTHER READING**
 
 For more information, follow the documentation in the "LoRaWAN Configutation Guide" file.
+
+**Deep thanks to Mr. Nguyen Huynh Nhat Thuong**
